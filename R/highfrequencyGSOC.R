@@ -1,0 +1,7 @@
+minRQ = function(){
+  
+}
+
+medRQ = function(){
+  
+}
