@@ -6,6 +6,8 @@
 Additional functionality for the highfrequency package
 }
 
+\description{Extra functionality for the highfrequency package, written by Giang, during the Google Summer of Code.}
+
 \details{
 \tabular{ll}{
 Package: \tab highfrequencyGSOC\cr

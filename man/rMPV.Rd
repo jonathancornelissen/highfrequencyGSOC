@@ -27,7 +27,7 @@ and \eqn{m} > \eqn{p/2}.
 }
 
 \usage{
-rMPV= function(rdata, m= 2, p=2, align.by= NULL, align.period= NULL, makeReturns= FALSE,...)
+rMPV(rdata, m= 2, p=2, align.by= NULL, align.period= NULL, makeReturns= FALSE,...)
 }
 
 \arguments{

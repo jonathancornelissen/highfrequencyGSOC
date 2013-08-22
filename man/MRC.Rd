@@ -8,7 +8,7 @@ Function returns univariate or multivariate preaveraged estimator, as difined in
 }
 
 \usage{
-MRC= function(pdata, pairwise=FALSE,makePsd= FALSE,...)
+MRC(pdata, pairwise=FALSE,makePsd= FALSE,...)
 }
 
 \arguments{
