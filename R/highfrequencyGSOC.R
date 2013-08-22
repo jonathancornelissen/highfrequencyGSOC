@@ -1,5 +1,4 @@
-minRQ = function(rdata,align.by=NULL,align.period = NULL, makeReturns = FALSE,...)
-{
+minRQ = function(rdata,align.by=NULL,align.period = NULL, makeReturns = FALSE,...){
   if (hasArg(data)) 
     {
     rdata = data
