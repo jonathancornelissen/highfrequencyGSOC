@@ -1,0 +1,9 @@
+Package: highfrequencyGSOC
+Type: Package
+Title: All code written during GSOC 2013 by Giang
+Version: 1.0
+Date: 2013-07-02
+Author: Giang Nguyen
+Maintainer: Giang Nguyen <hagiang3108@gmail.com>
+Description: Extra functionality for the highfrequency package written during GSOC
+License: MIT
