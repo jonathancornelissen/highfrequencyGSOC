@@ -16,3 +16,4 @@ export(AJjumptest,
 
 import(highfrequency);
 import(xts);
+
