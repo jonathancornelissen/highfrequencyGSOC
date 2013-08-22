@@ -984,5 +984,3 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
          minRQ= minRQ(rdata),
          medRQ= medRQ(rdata))
 }
-
-
