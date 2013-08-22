@@ -6,4 +6,5 @@ Date: 2013-07-02
 Author: Giang Nguyen
 Maintainer: Giang Nguyen <hagiang3108@gmail.com>
 Description: Extra functionality for the highfrequency package written during GSOC
+Depends: xts, highfrequency
 License: MIT

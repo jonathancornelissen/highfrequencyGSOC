@@ -1,1 +1,18 @@
-export(AJjumptest,BNSjumptest,ivInference,JOjumptest,medRQ,minRQ,MRC,rBeta,rKurt,rMPV,rQPVar,rQuar,rSkew,rSV,rTPVar);
+export(AJjumptest,
+       BNSjumptest,
+       ivInference,
+       JOjumptest,
+       medRQ,
+       minRQ,
+       MRC,
+       rBeta,
+       rKurt,
+       rMPV,
+       rQPVar,
+       rQuar,
+       rSkew,
+       rSV,
+       rTPVar);
+
+import(highfrequency);
+import(xts);
