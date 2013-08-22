@@ -45,3 +45,4 @@ minRQ
 % R documentation directory.
 \keyword{ highfrequency }
 \keyword{ minRQ }
+
