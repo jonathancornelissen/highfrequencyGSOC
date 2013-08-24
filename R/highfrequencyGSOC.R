@@ -6,7 +6,7 @@ minRQ = function(rdata,align.by=NULL,align.period = NULL, makeReturns = FALSE,..
   multixts = highfrequency:::.multixts(rdata)
   if (multixts) 
     {
-    result = apply.daily(rdata, minRQ, align.by, align.period, makeReturns) ##Check FUN
+    result = apply.daily(rdata, minRQ, align.by, align.period, makeReturns)
     return(result)
   }
   if (!multixts) 
@@ -36,7 +36,7 @@ medRQ = function(rdata, align.by = NULL, align.period = NULL, makeReturns = FALS
   multixts = highfrequency:::.multixts(rdata)
   if (multixts) 
   {
-    result = apply.daily(rdata, medRQ, align.by, align.period, makeReturns) ##Check FUN
+    result = apply.daily(rdata, medRQ, align.by, align.period, makeReturns) 
     return(result)
   }
   if (!multixts) 
@@ -65,7 +65,7 @@ rQuar = function(rdata, align.by = NULL, align.period = NULL, makeReturns = FALS
   multixts = highfrequency:::.multixts(rdata)
   if (multixts) 
   {
-    result = apply.daily(rdata, rQuar, align.by, align.period, ##check FUN
+    result = apply.daily(rdata, rQuar, align.by, align.period,
                          makeReturns)
     return(result)
   }
@@ -128,7 +128,7 @@ rTPVar = function(rdata, align.by = NULL, align.period = NULL, makeReturns = FAL
   multixts = highfrequency:::.multixts(rdata)
   if (multixts) 
   {
-    result = apply.daily(rdata, rTPVar, align.by, align.period, ##check FUN
+    result = apply.daily(rdata, rTPVar, align.by, align.period,
                          makeReturns)
     return(result)
   }
@@ -173,7 +173,7 @@ ivInference = function(rdata, IVestimator="RV", IQestimator="rQuar", confidence=
       N = length(rdata)
       p = as.numeric(confidence)
       
-      iq = .IQ(rdata,IQestimator)
+      iq = .hatiq(rdata,IQestimator)
       
       iv = .IV(IVestimator,iq)
       
@@ -205,7 +205,7 @@ thetaROWVar = function( alpha = 0.001 , alphaMCD = 0.5 )
   a_alpha = -2*sqrt(q_alpha)*dnorm(sqrt(q_alpha))+1-alpha;  
   b_alpha = -2*q_alpha^(3/2)*dnorm(sqrt(q_alpha))+3*a_alpha;
   
-  k = 1234567890; #TODO GIANG
+  k = qchisq(1-alpha, df= 1); #TODO GIANG ## suggestion in the article.
   halfk = sqrt(k); halfq = sqrt(q_alpha) 
   
   Ewu2   = 2*pnorm(halfk)-1;
@@ -250,8 +250,7 @@ BNSjumptest=function(rdata, IVestimator= "BV", IQestimator= "TP", type= "linear"
     hatQV = highfrequency:::RV(rdata)
     
     ## threshold BV
-    ## Gaussian kernel:   
-    
+        
     ## hatV: TODO this is not the right place, move to where it is always needed
     if(is.null(startV))
     {
@@ -436,7 +435,7 @@ rSV= function(rdata, align.by = NULL, align.period = NULL, makeReturns = FALSE,.
   multixts =highfrequency::: .multixts(rdata)
   if (multixts) 
   {
-    result = apply.daily(rdata, rSV, align.by, align.period,  ##check FUN
+    result = apply.daily(rdata, rSV, align.by, align.period,  
                          makeReturns)
     return(result)
   }
@@ -476,7 +475,7 @@ rSkew= function(rdata, align.by = NULL, align.period = NULL, makeReturns = FALSE
   multixts =highfrequency::: .multixts(rdata)
   if (multixts) 
   {
-    result = apply.daily(rdata, rSkew, align.by, align.period,  ##check FUN
+    result = apply.daily(rdata, rSkew, align.by, align.period,
                          makeReturns)
     return(result)
   }
@@ -512,7 +511,7 @@ rKurt= function(rdata, align.by = NULL, align.period = NULL, makeReturns = FALSE
   multixts =highfrequency::: .multixts(rdata)
   if (multixts) 
   {
-    result = apply.daily(rdata, rKurt, align.by, align.period,  ##check FUN
+    result = apply.daily(rdata, rKurt, align.by, align.period,
                          makeReturns)
     return(result)
   }
@@ -841,16 +840,18 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
 
 ### ivInference help functions:
 ##IQ estimator: 
-.IQ = function(rdata,IQestimator)
+.hatiq = function(rdata,IQestimator)
 {
   switch(IQestimator,
          RQuart = rQuar(rdata),
          QP     = rQPVar(rdata),
+         TP     = rTPVar(rdata),
          minRQ  = minRQ(rdata),
          medRQ  = medRQ(rdata))
 }
 
-##IV estimator: 
+
+##Standard error of IVestimator: 
 .IV=function(IVestimator,iq)
 {
   switch(IVestimator,
@@ -963,8 +964,9 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
          minRV  = minRV(rdata),
          medRV  = medRV(rdata),
          ROWvar = rOWCov(rdata,...),
-         CTBV   = .ctBV(rdata,...))
+         CTBV   = .ctBV(rdata, hatV, N,...))
 }
+
 
 .tt = function(IVestimator,...)
 {
@@ -972,14 +974,5 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
          BV= 2.61,
          minRV= 3.81,
          medRV= 2.96,
-         ROWVar = thetaROWVar(...))
-}
-
-.hatiq = function(rdata,IQestimator)
-{
-  switch(IQestimator,
-         TP= rTPVar(rdata),
-         QP= rQPVar(rdata),
-         minRQ= minRQ(rdata),
-         medRQ= medRQ(rdata))
+         ROWVar = thetaROWVar(alpha, alphaMCD))
 }
