@@ -1,28 +1,28 @@
 minRQ = function(rdata,align.by=NULL,align.period = NULL, makeReturns = FALSE,...){
   if (hasArg(data)) 
-    {
+  {
     rdata = data
   }
   multixts = highfrequency:::.multixts(rdata)
   if (multixts) 
-    {
+  {
     result = apply.daily(rdata, minRQ, align.by, align.period, makeReturns)
     return(result)
   }
   if (!multixts) 
-    {
+  {
     if ((!is.null(align.by)) && (!is.null(align.period))) {
       rdata = highfrequency:::.aggregatets(rdata, on = align.by, k = align.period)
     }
     if(makeReturns)
     {
-    rdata = makeReturns(rdata)
+      rdata = makeReturns(rdata)
     }
     q=as.zoo(abs(as.numeric(rdata)))
     q=as.numeric(rollapply(q, width = 2, FUN = min, by = 1, align = "left"))
     N=length(q)+1
     minRQ=pi*N/(3*pi-8)*(N/(N-1))*sum(q^4)
-  return(minRQ)
+    return(minRQ)
   }
 }
 
@@ -48,11 +48,11 @@ medRQ = function(rdata, align.by = NULL, align.period = NULL, makeReturns = FALS
     {
       rdata = makeReturns(rdata)
     }
-  q = abs(as.numeric(rdata))
-  q = as.numeric(rollmedian(q, k = 3,align="center"))
-  N = length(q)+2
-  medRQ = 3*pi*N/(9*pi+72-53*sqrt(3))*(N/(N-2))*sum(q^4)
-  return(medRQ)
+    q = abs(as.numeric(rdata))
+    q = as.numeric(rollmedian(q, k = 3,align="center"))
+    N = length(q)+2
+    medRQ = 3*pi*N/(9*pi+72-53*sqrt(3))*(N/(N-2))*sum(q^4)
+    return(medRQ)
   } 
 }
 
@@ -78,11 +78,11 @@ rQuar = function(rdata, align.by = NULL, align.period = NULL, makeReturns = FALS
     {
       rdata = makeReturns(rdata)
     }
-  
-  q=as.numeric(rdata)
-  N = length(q)+1
-  rQuar = N/3*sum(q^4)
-  return(rQuar)
+    
+    q=as.numeric(rdata)
+    N = length(q)+1
+    rQuar = N/3*sum(q^4)
+    return(rQuar)
   }
 }
 
@@ -109,12 +109,12 @@ rQPVar = function(rdata, align.by = NULL, align.period = NULL, makeReturns = FAL
     {
       rdata = makeReturns(rdata)
     }
-  
-  q=as.numeric(rdata)
-  q=abs(rollapply(q,width=4,FUN=prod,align="left"))
-  N = length(q)+3
-  rQPVar = N/(N-3)*pi^2/4*sum(q)
-  return(rQPVar)
+    
+    q=as.numeric(rdata)
+    q=abs(rollapply(q,width=4,FUN=prod,align="left"))
+    N = length(q)+3
+    rQPVar = N/(N-3)*pi^2/4*sum(q)
+    return(rQPVar)
   }
 }
 
@@ -141,60 +141,67 @@ rTPVar = function(rdata, align.by = NULL, align.period = NULL, makeReturns = FAL
     {
       rdata = makeReturns(rdata)
     }
-  
-  q=as.numeric(rdata)
-  q=abs(rollapply(q,width = 3, FUN = prod, align = "left"))
-  N = length(q)+2
-  rTPVar= N/(N-2)*gamma(1/2)^2/(4*gamma(7/6)^2)*sum(q^(4/3))
-  return(rTPVar)
+    
+    q=as.numeric(rdata)
+    q=abs(rollapply(q,width = 3, FUN = prod, align = "left"))
+    N = length(q)+2
+    rTPVar= N/(N-2)*gamma(1/2)^2/(4*gamma(7/6)^2)*sum(q^(4/3))
+    return(rTPVar)
   }
 }
 
 
-  
+
 ## Standard error and confidence band of RV measures
-ivInference = function(rdata, IVestimator="RV", IQestimator="rQuar", confidence=0.95, align.by= NULL, align.period = NULL, makeReturns = FALSE, ...)
+# User can choose integrated variance (IV) estimators RV, BV, minRV or medRV; 
+#and integrated quarticity (IQ) estimators: rQuar, TP, QP, minRQ or medRQ.
+# Output: 1)value of IVestimator; 
+#2) standard error of IVestimator;
+#3) confidence band of IVestimator. 
+
+ivInference = function(rdata, IVestimator = "RV", IQestimator = "rQuar", confidence = 0.95, align.by = NULL, align.period = NULL, makeReturns = FALSE, ...)
 {
-    if (hasArg(data)){    rdata = data  }
-    
-    multixts =highfrequency:::.multixts(rdata)
-    if (multixts) 
-    {
-      result = apply.daily(rdata, ivInference, align.by, align.period, ##check FUN
-                           makeReturns)
-      return(result)
-    }else{
-      if((!is.null(align.by)) && (!is.null(align.period))){
-        rdata =highfrequency:::.aggregatets(rdata, on = align.by, k = align.period)
-      }
-      
-      if(makeReturns){  rdata=makeReturns(rdata)  }
-      
-      N = length(rdata)
-      p = as.numeric(confidence)
-      
-      iq = .hatiq(rdata,IQestimator)
-      
-      iv = .IV(IVestimator,iq)
-      
-      
-      hatIV = .hativ(rdata, IVestimator)
-      
-      stderr= 1/sqrt(N)*iv
-      
-      ##confidence band
-      lowband=as.numeric(hatIV-stderr*qnorm(p))
-      highband=as.numeric(hatIV+stderr*qnorm(p))
-      cb<-c(lowband,highband)
-      
-      ## reports: 
-      out={}
-      out$hativ= hatIV
-      out$se= stderr
-      out$cb= cb
-      
-      return(out)
+  if (hasArg(data)){    rdata = data  }
+  
+  multixts = highfrequency:::.multixts(rdata)
+  if (multixts) 
+  {
+    result = apply.daily(rdata, ivInference, align.by, align.period,
+                         makeReturns)
+    return(result)
+  }
+  else{
+    if((!is.null(align.by)) && (!is.null(align.period))){
+      rdata =highfrequency:::.aggregatets(rdata, on = align.by, k = align.period)
     }
+    
+    if(makeReturns){  rdata=makeReturns(rdata)  }
+    
+    N      = length(rdata)
+    p      = as.numeric(confidence)
+    
+    iq     = .hatiq(rdata,IQestimator)
+    
+    iv     = .IV(IVestimator,iq)
+    
+    
+    hatIV  = .hativ(rdata, IVestimator, startV, N,...)
+    
+    stderr = 1/sqrt(N)*iv
+    
+    ##confidence band
+    lowband  = as.numeric(hatIV-stderr*qnorm(p))
+    highband = as.numeric(hatIV+stderr*qnorm(p))
+    cb <- c(lowband,highband)
+    
+    ## reports: 
+    out       ={}
+    out$hativ = hatIV
+    out$se    = stderr
+    out$cb    = cb
+    
+    return(out)
+  }
 }
 
 thetaROWVar = function( alpha = 0.001 , alphaMCD = 0.5 )
@@ -211,10 +218,10 @@ thetaROWVar = function( alpha = 0.001 , alphaMCD = 0.5 )
   Ewu2   = 2*pnorm(halfk)-1;
   Ewu2u2 = -2*halfk*dnorm(halfk)+Ewu2;
   Ewu2u4 = -2*(k^(3/2))*dnorm(halfk)+3*Ewu2u2;
-    
+  
   Ewu2u2IF = (-1+c_alpha*q_alpha-(c_alpha*q_alpha)/(1-alpha))*a_alpha+c_alpha*b_alpha/(1-alpha)
   Ewu2u2IF = Ewu2u2IF + 2*(1-c_alpha*q_alpha)*(
-  halfk*dnorm(halfk)-halfq*dnorm(halfq) + 1 - alpha/2 - pnorm(halfk)   )
+    halfk*dnorm(halfk)-halfq*dnorm(halfq) + 1 - alpha/2 - pnorm(halfk)   )
   Ewu2IF = (alpha-1-c_alpha*q_alpha*alpha) + c_alpha*a_alpha/(1-alpha) + 2*(c_alpha*q_alpha-1)*( pnorm(halfk)-(1-alpha/2))
   Ederwu2u4 = -k^(3/2)*dnorm(halfk);
   Ederwu2u2 = -halfk*dnorm(halfk);
@@ -228,37 +235,30 @@ thetaROWVar = function( alpha = 0.001 , alphaMCD = 0.5 )
 
 ##Jump-test: BNS with threshold
 BNSjumptest=function(rdata, IVestimator= "BV", IQestimator= "TP", type= "linear", logtransform= FALSE, max= FALSE, 
-                     align.by= NULL, align.period= NULL, makeReturns = FALSE, startV= NULL,...)
+                     align.by= NULL, align.period= NULL, makeReturns = FALSE, ...)
 {
   if (hasArg(data)){  rdata = data  }
   
   multixts = highfrequency:::.multixts(rdata)
   
   if (multixts){
-    result = apply.daily(rdata, BNSjumptest, align.by, align.period, makeReturns) ##Check FUN
+    result = apply.daily(rdata, BNSjumptest, align.by, align.period, makeReturns)
     return(result)
   }else{
     if((!is.null(align.by)) && (!is.null(align.period))) {
       rdata = highfrequency:::.aggregatets(rdata, on = align.by, k = align.period)
-  }
+    }
     
-  if(makeReturns){    rdata = makeReturns(rdata) }
+    if(makeReturns){    rdata = makeReturns(rdata) }
     
     N=length(rdata)
     
     ## hatQV
     hatQV = highfrequency:::RV(rdata)
     
-    ## threshold BV
-        
-    ## hatV: TODO this is not the right place, move to where it is always needed
-    if(is.null(startV))
-    {
-      hatV = medRV(rdata)
-    }else{ hatV = startV }
-        
-    hatIV = .hativ( rdata, IVestimator, hatV=hatV, N=N, ... )
-        
+    ## hatIV        
+    hatIV = .hativ( rdata, IVestimator, startV = startV, N=N, ... )
+    
     ##theta
     theta = .tt(IVestimator,...)    
     
@@ -272,18 +272,18 @@ BNSjumptest=function(rdata, IVestimator= "BV", IQestimator= "TP", type= "linear"
       if(logtransform)
       {
         hatQV = log(highfrequency:::RV(rdata))
-        hatIV = log(.hativ(rdata,IVestimator))
+        hatIV = log(.hativ(rdata,IVestimator, startV, N, ...))
       }
       if(!logtransform)
       {
         hatQV = highfrequency:::RV(rdata)
-        hatIV = .hativ(rdata,IVestimator)
+        hatIV = .hativ(rdata,IVestimator, startV, N, ...)
       }
       
       ## max argument
       if(max)
       {
-        product = max(1,.hatiq(rdata,IQestimator)/.hativ(rdata,IVestimator)^2)
+        product = max(1,.hatiq(rdata,IQestimator)/.hativ(rdata,IVestimator, startV, N, ...)^2)
       }
       if(!max)
       {
@@ -302,13 +302,13 @@ BNSjumptest=function(rdata, IVestimator= "BV", IQestimator= "TP", type= "linear"
       ## max argument
       if(max)
       {
-        product = max(1,.hatiq(rdata,IQestimator)/.hativ(rdata,IVestimator)^2)
+        product = max(1,.hatiq(rdata,IQestimator)/.hativ(rdata,IVestimator, startV, N, ...)^2)
       }
       if(!max)
       {
-        product = .hatiq(rdata,IQestimator)/.hativ(rdata,IVestimator)^2
+        product = .hatiq(rdata,IQestimator)/.hativ(rdata,IVestimator, startV, N, ...)^2
       }
-      a=sqrt(N)*(1-.hativ(rdata,IVestimator)/highfrequency:::RV(rdata))/sqrt((theta-2)*product)
+      a=sqrt(N)*(1-.hativ(rdata,IVestimator,  startV, N, ...)/highfrequency:::RV(rdata))/sqrt((theta-2)*product)
       out={}
       out$ztest=a
       out$critical.value= qnorm(c(0.025,0.975))
@@ -320,63 +320,63 @@ BNSjumptest=function(rdata, IVestimator= "BV", IQestimator= "TP", type= "linear"
 
 
 ##JOjumptest
-  JOjumptest= function(pdata, power=4,...)
+JOjumptest= function(pdata, power=4,...)
 {
-    simre=function (pdata) 
-    {
-      l = dim(pdata)[1]
-      x = matrix(as.numeric(pdata), nrow = l)
-      x[(2:l), ] = x[(2:l), ]/x[(1:(l - 1)), ]-1
-      x[1, ] = rep(0, dim(pdata)[2])
-      x = xts(x, order.by = index(pdata))
-    }
-    R=simre(pdata) 
-    r= makeReturns(pdata)  
-    N=length(pdata)-1
-    bv= highfrequency:::RBPVar(r)
-    rv= highfrequency:::RV(r)
-    
-    SwV=2*sum(R-r)
-    mu1=2^(6/2)*gamma(1/2*(6+1))/gamma(1/2)
-    
+  simre=function (pdata) 
+  {
+    l = dim(pdata)[1]
+    x = matrix(as.numeric(pdata), nrow = l)
+    x[(2:l), ] = x[(2:l), ]/x[(1:(l - 1)), ]-1
+    x[1, ] = rep(0, dim(pdata)[2])
+    x = xts(x, order.by = index(pdata))
+  }
+  R=simre(pdata) 
+  r= makeReturns(pdata)  
+  N=length(pdata)-1
+  bv= highfrequency:::RBPVar(r)
+  rv= highfrequency:::RV(r)
+  
+  SwV=2*sum(R-r)
+  mu1=2^(6/2)*gamma(1/2*(6+1))/gamma(1/2)
+  
   ##mupower:
-    if(power==4)
-    {
-      q=abs(rollapply(r, width = 4, FUN = prod, align = "left"))
-      mu2= 2^((6/4)/2)*gamma(1/2*(6/4+1))/gamma(1/2)
-      av=mu1/9 * N^3*(mu2)^(-4)/(N-4-1)*sum(q^(6/4),na.rm= TRUE)   ##check formula
-      JOtest= N*bv/sqrt(av)*(1- rv/SwV)
-      
-      out={}
-      out$ztest= JOtest
-      out$critical.value= qnorm(c(0.025,0.975))
-      out$pvalue= 2*pnorm(-abs(JOtest))
-      return(out)
-    }     
-    if(power==6)
-    {
-      q=abs(rollapply(r, width = 6, FUN = prod, align = "left"))
-      mu2= 2^((6/6)/2)*gamma(1/2*(6/6+1))/gamma(1/2)
-      av=mu1/9 * N^3*(mu2)^(-6)/(N-6-1)*sum(q^(6/6),na.rm= TRUE)   ##check formula
-      JOtest= N*bv/sqrt(av)*(1- rv/SwV)
-      
-      out={}
-      out$ztest= JOtest
-      out$critical.value= qnorm(c(0.025,0.975))
-      out$pvalue= 2*pnorm(-abs(JOtest))
-      return(out)
-    }     
+  if(power==4)
+  {
+    q=abs(rollapply(r, width = 4, FUN = prod, align = "left"))
+    mu2= 2^((6/4)/2)*gamma(1/2*(6/4+1))/gamma(1/2)
+    av=mu1/9 * N^3*(mu2)^(-4)/(N-4-1)*sum(q^(6/4),na.rm= TRUE)   ##check formula
+    JOtest= N*bv/sqrt(av)*(1- rv/SwV)
+    
+    out={}
+    out$ztest= JOtest
+    out$critical.value= qnorm(c(0.025,0.975))
+    out$pvalue= 2*pnorm(-abs(JOtest))
+    return(out)
+  }     
+  if(power==6)
+  {
+    q=abs(rollapply(r, width = 6, FUN = prod, align = "left"))
+    mu2= 2^((6/6)/2)*gamma(1/2*(6/6+1))/gamma(1/2)
+    av=mu1/9 * N^3*(mu2)^(-6)/(N-6-1)*sum(q^(6/6),na.rm= TRUE)   ##check formula
+    JOtest= N*bv/sqrt(av)*(1- rv/SwV)
+    
+    out={}
+    out$ztest= JOtest
+    out$critical.value= qnorm(c(0.025,0.975))
+    out$pvalue= 2*pnorm(-abs(JOtest))
+    return(out)
+  }     
 }  
 
 
-  
+
 ## AJjumptest:
 AJjumptest= function(pdata, p=4 , k=2, align.by= NULL, align.period = NULL, makeReturns= FALSE, ...)
 {
   if (hasArg(data)){    pdata = data  }
   
   multixts = highfrequency:::.multixts(pdata)
-    
+  
   if (multixts) 
   {
     result = apply.daily(pdata, AJjumptest, align.by, align.period, makeReturns) ## Check FUN
@@ -384,45 +384,45 @@ AJjumptest= function(pdata, p=4 , k=2, align.by= NULL, align.period = NULL, make
   }else{
     pdata = highfrequency:::.aggregatets(pdata, on = "seconds", k = 1)
   }
-    
-    N = length(pdata)-1
-    p = as.numeric(p)
-    k = as.numeric(k)
-    alpha = (1-1/p)/2 ## discuss this value
-    w = 0.47
-    cvalue = alpha*(1/N)^w
-      
-    h = align.period * .scale(align.by)
-    hk= h*k
-    
-    seq1 = seq(1, N, h)
-    seq2 = seq(1, N, hk)
-    
+  
+  N = length(pdata)-1
+  p = as.numeric(p)
+  k = as.numeric(k)
+  alpha = (1-1/p)/2 ## discuss this value
+  w = 0.47
+  cvalue = alpha*(1/N)^w
+  
+  h = align.period * .scale(align.by)
+  hk= h*k
+  
+  seq1 = seq(1, N, h)
+  seq2 = seq(1, N, hk)
+  
   # return data
-    pdata1 = pdata[seq1]
-    pdata2 = pdata[seq2]
-    
-    r  = abs(makeReturns(pdata));
-    r1 = abs(makeReturns(pdata1));
-    r2 = abs(makeReturns(pdata2));
-   
-    pv1 = sum(r1^p)
-    pv2 = sum(r2^p)
-    
-    S = pv1/pv2
+  pdata1 = pdata[seq1]
+  pdata2 = pdata[seq2]
+  
+  r  = abs(makeReturns(pdata));
+  r1 = abs(makeReturns(pdata1));
+  r2 = abs(makeReturns(pdata2));
+  
+  pv1 = sum(r1^p)
+  pv2 = sum(r2^p)
+  
+  S = pv1/pv2
   
   ## selection return:
-    selection <- abs(r) < cvalue
-    rse <- abs(makeReturns(pdata[selection]))
-    
+  selection <- abs(r) < cvalue
+  rse <- abs(makeReturns(pdata[selection]))
+  
   ## AJ test: 
-    AJtest= (S-k^(p/2-1))/sqrt(.V(rse,p,k,N))
-    
-    out = {};
-    out$ztest= AJtest;
-    out$critical.value= qnorm(c(0.025,0.975));
-    out$pvalue= 2*pnorm(-abs(AJtest));
-    return(out)  
+  AJtest= (S-k^(p/2-1))/sqrt(.V(rse,p,k,N))
+  
+  out = {};
+  out$ztest= AJtest;
+  out$critical.value= qnorm(c(0.025,0.975));
+  out$pvalue= 2*pnorm(-abs(AJtest));
+  return(out)  
 }    
 
 ##Realized semivariance
@@ -461,7 +461,7 @@ rSV= function(rdata, align.by = NULL, align.period = NULL, makeReturns = FALSE,.
     out$rSVupside = rSVu
     
     return(out)
-        
+    
   }
 }
 
@@ -582,7 +582,7 @@ rMPV= function(rdata, m= 2, p=2, align.by= NULL, align.period= NULL, makeReturns
 
 
 ##Preaveraging estimators (matrix)
-  ##Preaverage return: 
+##Preaverage return: 
 hatreturn= function(pdata,kn)
 {
   rdata=makeReturns(pdata)
@@ -597,7 +597,7 @@ hatreturn= function(pdata,kn)
   }  
   return(hatre)  
 }
-  ##gfunction:
+##gfunction:
 gfunction = function(x){
   # returns the minimum of x and 1-x
   # whenevr x > 1-x , replace with 1-x
@@ -606,7 +606,7 @@ gfunction = function(x){
   
 }
 
-  #r#Univariate estimation:
+#r#Univariate estimation:
 crv=function(pdata)
 {
   N= nrow(pdata)
@@ -620,20 +620,20 @@ crv=function(pdata)
   psi1kn= kn* sum((gfunction((1:kn)/kn) - gfunction(( (1:kn) - 1 )/kn ) )^2 )
   
   psi2kn= 1/kn*sum(gfunction((1:kn)/kn)^2) 
-
+  
   r1= hatreturn(pdata,kn=kn)
   rdata = makeReturns(pdata)
   crv= 1/(sqrt(N)*theta*psi2kn)*sum(r1^2,na.rm=TRUE) - psi1kn*(1/N)/(2*theta^2*psi2kn)*sum(rdata^2,na.rm=TRUE)
   return(crv)
 }
 
-  ##preav_bi
+##preav_bi
 preav_bi= function(pdata1, pdata2)
 {
   x = refreshTime(list(pdata1, pdata2))
   newprice1 = x[, 1]
   newprice2 = x[, 2]  
-
+  
   N= nrow(x)
   theta= 0.8 ##recommendation by Hautsch and Podolskij
   kn= floor(theta*sqrt(N))  
@@ -656,10 +656,10 @@ preav_bi= function(pdata1, pdata2)
 }
 
 
-  ##Preaveraging
+##Preaveraging
 MRC= function(pdata, pairwise = FALSE , makePsd= FALSE,...)
 {
-
+  
   if (!is.list(pdata)) {
     n = 1
   }else {
@@ -668,7 +668,7 @@ MRC= function(pdata, pairwise = FALSE , makePsd= FALSE,...)
   if (n == 1) {
     multixts = highfrequency:::.multixts(pdata); 
     if(multixts){ stop("This function does not support having an xts object of multiple days as input. Please provide a timeseries of one day as input"); }
-     mrc = crv(pdata)
+    mrc = crv(pdata)
   }  
   
   
@@ -723,7 +723,7 @@ MRC= function(pdata, pairwise = FALSE , makePsd= FALSE,...)
       {
         mrc=makePsd(mrc)
       }
-          
+      
     }
   }
   return(mrc) 
@@ -753,14 +753,14 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
   if (!multixts) 
   {
     if(RCOVestimator=="rRTSCov" | RCOVestimator=="rTSCov"){
-       if( min(rdata) <0 ){
-          print("when using rRTSCov, rTSCov, introduce price data - transformation to price data done")
-          rdata = exp(cumsum(rdata))
-       }
-       if( min(rindex) <0 ){
-         print("when using rRTSCov, rTSCov, introduce price data - transformation to price data done")
-         rindex = exp(cumsum(rindex))
-       }       
+      if( min(rdata) <0 ){
+        print("when using rRTSCov, rTSCov, introduce price data - transformation to price data done")
+        rdata = exp(cumsum(rdata))
+      }
+      if( min(rindex) <0 ){
+        print("when using rRTSCov, rTSCov, introduce price data - transformation to price data done")
+        rindex = exp(cumsum(rindex))
+      }       
     }
     rcovfun= function(rdata, rindex, RCOVestimator)
     {
@@ -774,7 +774,7 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
              rRTSCov= rRTSCov(list(rdata, rindex))[1,2],
              rThresholdCov= rThresholdCov(cbind(rdata, rindex) )[1,2],
              rTSCov= rTSCov(list(rdata, rindex))[1,2]
-             )
+      )
       
     }
     rcov= rcovfun(rdata,rindex,RCOVestimator)
@@ -783,7 +783,7 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
     
     rvfun= function(rindex, RVestimator)
     {
-    
+      
       switch(RVestimator,
              RV= highfrequency:::RV(rindex),
              BV= highfrequency:::RBPVar(rindex),
@@ -798,8 +798,8 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
              rRTSCov= rRTSCov(rindex) ,
              rThresholdCov= rThresholdCov(rindex ) ,
              rTSCov= rTSCov(rindex)
-             )             
-    
+      )             
+      
     }
     rv=rvfun(rindex,RVestimator)
     
@@ -843,15 +843,18 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
 .hatiq = function(rdata,IQestimator)
 {
   switch(IQestimator,
-         RQuart = rQuar(rdata),
+         rQuar  = rQuar (rdata),
          QP     = rQPVar(rdata),
          TP     = rTPVar(rdata),
-         minRQ  = minRQ(rdata),
-         medRQ  = medRQ(rdata))
+         minRQ  = minRQ (rdata),
+         medRQ  = medRQ (rdata))
 }
 
 
 ##Standard error of IVestimator: 
+# Reference can be found at: Andersen, T. G., D. Dobrev, and E. Schaumburg (2012). 
+#Jump-robust volatility estimation using nearest neighbor truncation. Journal of Econometrics, 169(1), 75- 93.
+
 .IV=function(IVestimator,iq)
 {
   switch(IVestimator,
@@ -872,7 +875,20 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
          "hours"= as.numeric(3600))
 }
 
-## mupk
+## mukp: to use when p,k different from range [4,6]
+.mukp=function(p,k, T=1000000)
+{
+  p = as.numeric(p)
+  k = as.numeric(k)
+  
+  U = rnorm(T)
+  Y = rnorm(T)
+  absU = abs(U)
+  mukp = mean((absU^p)*(abs(U +sqrt(k-1)*Y))^p) 
+  return(mukp)
+}
+
+##fmupk: to use to calculate mupk in the function of the author. 
 .fmupk = function(p,k){
   mupk = NULL;
   if(p==2){
@@ -897,10 +913,9 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
     # reduce simulation error by taking large T and large nrep
     nrep = 100;
     vmupk = rep(NA,times= nrep)
-    # TODO GIANG CHECK THIS BUG
+    
     for( i in 1:nrep){
-      print(i)
-      vmupk[i] = .fmupk(p,k)  #TODO: check, is this recursive call correct??
+      vmupk[i] = .mukp(p,k,T=1000000)  
     }
     mupk = round(mean(vmupk),2)    
   }
@@ -937,25 +952,37 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
   {
     out = abs(x)
   }
-  else(out=1.094*sqrt(y))
+  else(out=1.094*sqrt(y))  ##1.094: estimated by the article
   return(out)
 }
 
 ##corrected threshold bipower variation: 
-.ctBV = function(rdata,hatV,N){
+.ctBV = function(rdata, startV = NULL, N){
   q = as.numeric(rdata)
   
-  v  = 3^2*hatV
-  z1 =  .zgamma(rdata[2:N],v)  ##check formula TODO
-  z2 =  .zgamma(rdata[1:(N-1),v]) ##check formula TODO 
+  ## hatV
+  if(is.null(startV))
+  {
+    hatV = medRV(rdata)
+  }else{ hatV = startV }
   
+  v  = 3^2*hatV
+  for (i in 2:N)
+  {z1 = rep(0,N-1)
+   z1[i] =  .zgamma(rdata[i],v)  ##check formula TODO
+  }
+  
+  for (j in 1:(N-1))
+  {z2 = rep(0,N-1)
+   z2[i] =  .zgamma(rdata[j],v) ##check formula TODO 
+  }
   ctbv= (pi/2)*sum(z1*z2)
   
   return(ctbv)
 }
 
 ## hatIV
-.hativ = function( rdata, IVestimator,...)
+.hativ = function( rdata, IVestimator, startV = NULL, N,...)
 {
   switch(IVestimator,
          RV     = highfrequency:::RV(rdata),
@@ -964,7 +991,7 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
          minRV  = minRV(rdata),
          medRV  = medRV(rdata),
          ROWvar = rOWCov(rdata,...),
-         CTBV   = .ctBV(rdata, hatV, N,...))
+         CTBV   = .ctBV(rdata, startV, N,...))
 }
 
 
@@ -975,4 +1002,347 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
          minRV= 3.81,
          medRV= 2.96,
          ROWVar = thetaROWVar(alpha, alphaMCD))
+}
+
+
+### Standard error of HEAVY model: 
+## INPUT: 
+# - rpara, rmpara: vectors of parameters: omega, alpha and beta of demeaned returns and realized measures from heavyModel. 
+# - lR, lRM: function of log-likelihood from heavyModel;
+# Note: numDeriv package is required. 
+## OUTPUT: standard error of parameters calculated from log-likelihood heavyModel.
+
+
+.transformparams = function( p, q, par ){
+  K = dim(p)[1]; 
+  pmax = max(p); qmax = max(q); # Max number of lags for innovations and cond vars
+  
+  O = matrix( par[1:K], ncol=1);
+  A = B = list();
+  start = (K+1); 
+  
+  for(i in 1:pmax){    # A will contain a list-item per innovation lag
+    end =          start + sum(p>=i) - 1; # How many non-zero params in this loop?
+    A[[i]] =       matrix(rep(0,K^2),ncol=2); 
+    A[[i]][p>=i] = par[start:end];
+    start  = end + 1;   
+  }#end loop over number of lags for innovations
+  
+  for(i in 1:qmax){   # B will contain a list-item per cond var lag
+    end   = start + sum(q>=i) -1; # How many non-zero params in this loop?
+    B[[i]] = matrix(rep(0,K^2),ncol=2); 
+    B[[i]][q >= i] = par[start:end];
+    start  = end + 1;   
+  }#End loop over number of lags for cond variances
+  
+  return( list(O,A,B) ) 
+}  
+
+.transtosplit = function(paramsvector,p,q){
+  # K is the number of equations in the heavy model
+  
+  # paramsvector is the vector of paramaters ordered as follows:
+  # First the estimates for omega then the estimates for the non-zero alpha's with the most recent lags first in case max(p) > 1, 
+  # then the estimates for the non-zero beta's with the most recent lag first in case max(q) > 1.
+  
+  # splittedparams is the vector of parameters ordered by equation
+  # first the omega, alphas and betas of the first equation
+  # then the second equation 
+  # and so on
+  
+  # determine a list with two outputs: list element one is the splittesparamsvectors 
+  # and list element two is vk such that vk[i] is the number of parameters of equation i in the heavy model
+  
+  # clarify omega, alpha and beta: 
+  K = nrow(p)[1]
+  
+  # intercept paramaters
+  vo     = paramsvector[1:K]
+  # data paramaters
+  pmax = max(p); qmax = max(q); # Max number of lags for innovations and cond vars
+  mA = mB = c();
+  start = (K+1); 
+  
+  for(i in 1:pmax){    # A will contain a list-item per innovation lag
+    end      = start + sum(p>=i) - 1; # How many non-zero params in this loop?
+    Ai       = matrix(rep(NA,K^2),ncol=K); 
+    Ai[p>=i] = paramsvector[start:end];
+    mA       = cbind(mA,Ai)
+    start    = end + 1;   
+  }#end loop over number of lags for innovations
+  
+  
+  # autoregressive term parameters
+  for(i in 1:qmax){   # B will contain a list-item per cond var lag
+    end      = start + sum(q>=i) -1; # How many non-zero params in this loop?
+    Bi       = matrix(rep(NA,K^2),ncol = K); 
+    Bi[q>=i] = paramsvector[start:end];
+    mB       = cbind(mB,Bi)
+    start    = end + 1;   
+  }#End loop over number of lags for cond variances  
+  
+  all = cbind(vo , mA , mB)
+  tall = t(all) 
+  theta = tall[!is.na(tall)]
+  
+  vk = rep(0, K)
+  for (i in 1: K)
+  {
+    vk[i] = 1 + sum(p[i,]) + sum(q[i,])
+  }
+  
+  return(list(theta,vk))
+}
+
+.transtopar = function(theta, p, q){
+  
+  K = nrow(p)
+  maxp = max(p)
+  maxq = max(q)
+  
+  # Determine vk: 
+  vk = rep(0, K)
+  for (i in 1: K)
+  {
+    vk[i] = 1 + sum(p[i,]) + sum(q[i,])
+  } # CHECK: this function run properly. However, when we run function: .SEheavyModel, there is error: Error in q[i, ] : incorrect number of dimensions
+  
+  
+  # matrix O
+  vo = rep(NA,K)
+  
+  start = 1
+  
+  for (i in 1: K)
+  {
+    vo[i] = theta[start]
+    start = start + vk[i]
+  }  # CHECK: code seems ok. Yet, the result is incorrect. 
+  
+  #matrix A: 
+  
+  mA = matrix (rep(NA, K*K*maxp), nrow = K)
+  start = 2
+  
+  for (k1 in 1:K)
+  {
+    for (k2 in 1:K)
+    {
+      pp = p[k1,k2]
+      if (pp==0){next}
+      
+      for (ppp in 1:pp)
+      {
+        mA[k1, k2+(ppp-1)*K] = theta[start]
+        if(maxp<=1){start = start + vk[k1]}
+        else {start = start + 1}
+      }
+    }
+  } 
+  
+  vA = t(mA[!is.na(mA)])
+  # matrix B:
+  
+  mB = matrix (rep(NA, K*K*maxq), nrow = K)
+  start = 2 + sum(p[1,]) 
+  
+  for (k1 in 1:K)
+  {
+    for (k2 in 1:K)
+    {
+      qq = q[k1,k2]
+      if (qq==0){next}
+      
+      for (qqq in 1:qq)
+      {
+        mB[k1, k2+(qqq-1)*K] = theta[start]
+        if(maxq<=1){start = start + vk[k1]}
+        else {start = start + 1}
+      }
+    }
+  }
+  
+  vB = t(mB[!is.na(mB)])
+  # combine: 
+  all = cbind(matrix(vo,nrow = 1), matrix(vA,nrow=1), matrix(vB,nrow=1)) #CHECK: rbind function requires the same ncol, it does not meet this requirement here?. 
+  
+  return(all)
+  
+}  # CHECK: add argument if: it works for traditional p, q. And it should be checked more with other p, q. 
+
+.heavy_likelihood = function( par, data, p, q, backcast, LB, UB, foroptim=TRUE, compconst=FALSE ){ 
+  # Get the required variables
+  # p is Max number of lags for innovations 
+  # q is Max number of lags for conditional variances
+  K    = ncol(data);  #Number of series to model
+  T    = nrow(data);  #Number of time periods
+  lls  = rep(NA,T);     #Vector containing the likelihoods
+  h    = matrix(nrow=K,ncol=T); #Matrix to containing conditional variances
+  maxp = max(p); maxq=max(q);
+  
+  # Set lower and upper-bound if not specified:
+  if( is.null(LB) ){ LB = rep(0,K)   }
+  if( is.null(UB) ){ UB = rep(Inf,K) }
+  
+  
+  # Get the parameters:
+  x = .transformparams( par, p=p, q=q );
+  if( compconst ){ O = x[[1]]; } 
+  A = x[[2]]; B = x[[3]]; 
+  # Compute constant in case it needn't to be optimized:
+  if( !compconst ){ # Don't compute the omega's but do (1-alpha-beta)*unconditional
+    totalA = totalB = matrix( rep(0,K) ,ncol=1,nrow=K);
+    for(j in 1:length(A) ){ totalA = totalA + t(t(rowSums(A[[j]]))); } # Sum over alphas for all models
+    for(j in 1:length(B) ){ totalB = totalB + t(t(rowSums(B[[j]]))); } # Sum over betas for all models
+    O = 1 - totalA - totalB; # The remaing weight after substracting A & B
+    # Calculate the unconditionals ### KRIS FEEDBACK PLEASE ###
+    uncond = t(t(colMeans(data)));
+    O = O*uncond;
+  } #End if close for not optimizing over omega  
+  
+  if( sum(O) < 0 ){ O[O<0] = 10^(-10)} #params here are shouldn't be smaller than zero
+  
+  likConst = K*log(2*pi); #constant for loglikelihood
+  
+  for(t in 1:T){ # Start loop over time periods
+    h[,t] = O;    #Add constant to h
+    
+    for(j in 1:maxp){# Loop over innovation lags
+      if( (t-j) > 0 ){ 
+        h[,t] = h[,t] + t( A[[j]] %*% t(t(data[(t-j),])) ); #Adding innovations to h        
+      }else{ 
+        h[,t] = h[,t] + t( A[[j]] %*% backcast ); #Adding innovations to h          
+      }
+    } #end loop over innovation lags # CHECK: error caution: "Error in A[[j]] %*% t(t(data[(t - j), ])) : non-conformable arguments"????
+    
+    for(j in 1:maxq){# Loop over cond variances lags
+      if( (t-j) > 0 ){ 
+        h[,t] = h[,t] + t( B[[j]] %*% t(t(h[,(t-j)])) ); #Adding cond vars to h 
+      }else{ 
+        h[,t] = h[,t] + t( B[[j]] %*% backcast ); #Adding cond vars to h          
+      }
+    }#End loop over innovation lags
+    
+    if( any( h[,t]>1e3 )){ break ;}
+    # Check whether h's are between LB and UB:      
+    for(j in 1:K){ #Loop over 
+      if( h[j,t] < LB[j] ){  h[j,t] = LB[j]/(1- (h[j,t] - LB[j]) );}
+      if( h[j,t] > UB[j] ){  h[j,t] = UB[j] + log( h[j,t] - UB[j]);}
+    }#end loop over series
+    
+    lls[t] = 0.5*( likConst + sum( log(h[,t]) ) + sum( data[t,] / h[,t] ) ); # lr_t + lrm_t            
+  } #End loop over days
+  
+  ll = sum(lls); #log Q1 + log Q2 
+  
+  if(is.na(ll) || is.infinite(ll) ){  ll = 10^7 } 
+  
+  if(foroptim){   output = ll; return(output); }
+  if(!foroptim){
+    output = list( loglikelihood=ll, likelihoods=lls, condvar = h );
+    return(output)
+    # Output list:
+    # (i) total loglikelihood
+    # (ii) likelihood parts per time period
+    # (iii) matrix with conditional variances    
+  } #end output in case you want params
+}
+
+.heavy_likelihood_ll  = function( splittedparams, data, p, q, backcast, LB, UB, compconst=FALSE, ... ){ 
+  par = .transtopar( splittedparams,  p, q )[[1]]
+  out = .heavy_likelihood( par, data, p, q, backcast, LB, UB, foroptim=FALSE, compconst=FALSE )
+  return(out[[1]])
+} 
+
+.heavy_likelihood_lls  = function( splittedparams , data, p, q, backcast, LB, UB, compconst=FALSE,... ){ 
+  par = .transtopar( splittedparams,  p, q )
+  out = .heavy_likelihood( par, data, p, q, backcast, LB, UB, foroptim=FALSE, compconst=FALSE )
+  return(out[[2]])
+} 
+
+
+.get_param_names = function( estparams, p, q){
+  K = dim(p)[2];
+  nAlpha =  sum(p);
+  nBeta  =  sum(q);
+  omegas = paste("omega",1:K,sep="");
+  alphas = paste("alpha",1:nAlpha,sep="");
+  betas  = paste("beta", 1:nBeta,sep="");
+  names  = c(omegas,alphas,betas);
+  
+}
+
+.SEheavyModel=function( paramsvector, data, p, q, backcast, LB, UB, compconst=FALSE, ...)
+{
+  require(numDeriv)
+  K    = ncol(data);  #Number of series to model
+  
+  # Set lower and upper-bound if not specified:
+  if( is.null(LB) ){ LB = rep(0,K)   }
+  if( is.null(UB) ){ UB = rep(Inf,K) }
+  
+  # based on p and q, map heavy paramsvector into splitted params vector called theta 
+  
+  out = .transtosplit ( paramsvector,  p, q)
+  
+  if(!compconst){
+    splittedparams = out[[1]]
+    
+  }else{
+    
+    
+  }
+  
+  
+  # vk[i] is the number of parameters of equation i in the heavy model
+  vk = out[[2]]
+  
+  # compute the asymptotic covariance matrix of splittedparamsvector
+  
+  mH = hessian (.heavy_likelihood_ll, x= splittedparams, data, p, q, backcast, LB, UB, compconst)
+  
+  T        = nrow(data) 
+  nm       = length(paramsvector)
+  Jmatrix  = matrix (rep(0, nm^2), ncol = nm)
+  end = 0
+  
+  
+  for( k in 1:K){
+    start = end + 1
+    end   = start + vk[k] - 1
+    Jmatrix[start:end, start:end] =  mH[start:end, start:end]
+  } # CHECK: unexpected result: start value exceeds bound???
+  
+  
+  Jmatrix = -1/T * Jmatrix
+  ## J-1 (inverse matrix of J)
+  invJ = solve(Jt)
+  
+  ## Define It
+  # jacobian will be T x length of theta 
+  m  = jacobian(fun = .heavy_likelihood_lls, x = splittedparams, data, p, q, backcast, LB, UB, compconst=FALSE) # returns a vector?
+  It = cov(m)
+  
+  ## Standard error:
+  
+  ACOVheavyModel =  (invJ %*% It %*% t(invJ)) #return a matrix
+  
+  # compute the standard errors of splittedparamsvector
+  
+  # Standard error:
+  SEheavyModel = sqrt(diag(ACOVheavyModel))/sqrt(T)   
+  
+  
+  
+  # reorder such that they correspond to paramsvector
+  reSEheavyModel = .transtopar(SEheavyModel, p, q)
+  
+  # map it back to paramsvector
+  out = cbind(paramsvector, reSEheavyModel)
+  
+  
+  
+  
+  return(out)
+  
 }
