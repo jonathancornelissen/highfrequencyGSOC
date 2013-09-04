@@ -808,6 +808,153 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
   }
 }
 
+
+############### HEAVY MODEL C IMPLEMENTATION ##########
+###########
+# Likelihood for HEAVY volatility model of Shephard and Sheppard 
+# Code is R-translation by Jonathan Cornelissen of matlab code of http://www.kevinsheppard.com/wiki/MFE_Toolbox
+# by: kevin.sheppard@economics.ox.ac.uk
+
+# USAGE:
+#  [LL,LLS,H] = heavy_likelihood(PARAMETERS,DATA,P,Q,BACKCAST,LB,UB)
+
+# INPUTS: 
+#   PARAMETERS  - A vector with K+sum(sum(P))+sum(sum(Q)) elements. 
+#    DATA       - A T by K vector of non-negative data.  Returns should be squared before using
+#    P          - A K by K matrix containing the lag length of model innovations.  Position (i,j)
+#                   indicates the number of lags of series j in the model for series i
+#    Q          - A K by K matrix containing the lag length of conditional variances.  Position (i,j)
+#                   indicates the number of lags of series j in the model for series i
+#    BACKCAST   - A 1 by K matrix of values to use fo rback casting
+#    LB         - A 1 by K matrix of volatility lower bounds to use in estimation
+#    UB         - A 1 by K matrix of volatility upper bounds to use in estimation
+# 
+# OUTPUTS:
+#    LL          - The log likelihood evaluated at the PARAMETERS
+#    LLS         - A T by 1 vector of log-likelihoods
+#    HT          - A T by K matrix of conditional variances
+
+# In contrast to Sheppards code, I make a list for parameters (easier interpretation)
+#NOTE # the parameter list has three items: O, A and B
+# O is a matrix (K by 1), A and B items are (K by K) matrices
+
+heavyModel = function(data, p=matrix( c(0,0,1,1),ncol=2 ), q=matrix( c(1,0,0,1),ncol=2 ), 
+                      startingvalues = NULL, LB = NULL, UB = NULL, 
+                      backcast = NULL, compconst = FALSE){
+  K = dim(p)[2];
+  
+  # Set lower and upper-bound if not specified:
+  if( is.null(LB) ){ LB = rep(0,K)   }
+  if( is.null(UB) ){ UB = rep(Inf,K) }
+  
+  # Assign starting values if necessary:
+  if( is.null(startingvalues) ){  #Very very naive, to adjust later
+    startingvalues = rep(NA,K+sum(p)+sum(q));
+    startingvalues[1:K] = 0.1;
+    start = K+1; end = K+sum(p);
+    startingvalues[start:end] = 0.3;
+    start = end+1; end = start+sum(q)-1;
+    startingvalues[start:end] = 0.6;
+  }  
+  # Rescale? (useful to avoid numerical problems: TODO LATER)
+  
+  # Set backcast if necessary: how to initialize the model?
+  if(is.null( backcast)){ 
+    # For now, just unconditionally
+    backcast = t( t( colMeans(data) ) );
+  } 
+  
+  # Estimate the parameters: 
+  # Set constraints: 
+  KKK  = length(startingvalues);    
+  ui   = diag(rep(1,KKK)); #All parameters should be larger than zero, add extra constraints with rbind...  
+  ci   = rep(0,dim(ui)[2]);  
+  
+  x = try(optim( par = startingvalues, fn = heavy_likelihood_c,
+                 data=data, p=p, q=q,backcast=backcast,UB=UB,LB=LB, foroptim=TRUE, compconst = compconst ) ); # ADJUST maxit ?!!
+  
+  if( class(x) == "try-error" ){
+    stop("Error in likelihood optimization")
+  }
+  
+  # Get the output: 
+  estparams     = x$par; 
+  loglikelihood = x$value; 
+  
+  # Get the list with: total-log-lik, daily-log-lik, condvars
+  xx = heavy_likelihood_c(par = estparams, data=data, p=p, q=q, backcast=backcast, LB=LB, UB=UB, foroptim=FALSE, compconst = compconst);
+  
+  # Add the timestamps and make xts: condvar and likelihoods:
+  if( ! is.null(rownames(data)) ){
+    xx$condvar    = xts( t(xx$condvar),  order.by   = as.POSIXct( rownames(data) ) );     
+    xx$likelihoods = xts( xx$likelihoods, order.by = as.POSIXct( rownames(data) ) );
+  }
+  
+  # 
+  xx$estparams = matrix(estparams,ncol=1); 
+  rownames(xx$estparams) = .get_param_names(estparams,p,q);
+  xx$convergence = x$convergence
+  
+  return(xx)
+}
+
+.get_param_names = function( estparams, p, q){
+  K = dim(p)[2];
+  nAlpha =  sum(p);
+  nBeta  =  sum(q);
+  omegas = paste("omega",1:K,sep="");
+  alphas = paste("alpha",1:nAlpha,sep="");
+  betas  = paste("beta", 1:nBeta,sep="");
+  names  = c(omegas,alphas,betas);
+  
+}
+
+heavy_likelihood_c = function( par, data, p, q, backcast, LB, UB, foroptim=TRUE, compconst=FALSE ){
+  
+  # Get the required variables
+  # p is Max number of lags for innovations 
+  # q is Max number of lags for conditional variances
+  K     = dim(data)[2];  #Number of series to model
+  TT     = dim(data)[1];  #Number of time periods
+  means = colMeans(data); #Means per day for different vol measures
+  lls   = rep(NA,T);     #Vector containing the likelihoods
+  h     = matrix(nrow=K,ncol=T); #Matrix to containing conditional variances
+  maxp  = max(p); maxq=max(q);
+  if(any(UB == Inf)){ UB[UB==Inf] = 10^6 }
+  
+  likelihoodC = .C("heavy_likelihoodR", 
+                   parameters = as.double(par), 
+                   data = as.double(data), 
+                   TT = as.integer(TT), 
+                   K = as.integer(K), 
+                   means = as.double(means),
+                   p = as.integer(p),
+                   q = as.integer(q),
+                   pMax = as.integer(maxp),
+                   qMax = as.integer(maxq),
+                   backcast = as.double(backcast),
+                   LB = as.double(LB), 
+                   UB = as.double(UB), 
+                   compconst = as.integer(compconst),
+                   h = as.double(matrix(rep(0,K*TT),nrow=K,ncol=TT)),
+                   lls = as.double( rep(0, TT) ),
+                   llRM = as.double( rep(0,K ) ),
+                   ll = as.double(0),
+                   PACKAGE="highfrequencyGSOC"); 
+  
+  if(foroptim){   output = likelihoodC$ll; return(output); }
+  if(!foroptim){
+    output = list( loglikelihood=likelihoodC$ll, 
+                   likelihoods=likelihoodC$lls, 
+                   condvar = matrix(likelihoodC$h,byrow=TRUE,nrow=K) );
+    return(output)
+    # Output list:
+    # (i) total loglikelihood
+    # (ii) likelihood parts per time period
+    # (iii) matrix with conditional variances    
+  } #end output in case you want params    
+}
+
 ############### INTERNAL HELP FUNCTIONS ############### 
 ### thetaROWVar help functions:
 .IF_MCD = function( x, alpha ){
@@ -1096,18 +1243,20 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
 
 .transtopar = function(theta, p, q){
   
-  K = nrow(p)
-  maxp = max(p)
-  maxq = max(q)
+  K = nrow(p);
+  maxp = max(p);
+  maxq = max(q);
   
   # Determine vk: 
-  vk = rep(0, K)
+  vk = rep(0, K);
+  
   for (i in 1: K)
   {
-    vk[i] = 1 + sum(p[i,]) + sum(q[i,])
+    vk[i] = 1 + sum(p[i, ]) + sum(q[i, ])
+    
   } # CHECK: this function run properly. However, when we run function: .SEheavyModel, there is error: Error in q[i, ] : incorrect number of dimensions
   
-  
+
   # matrix O
   vo = rep(NA,K)
   
@@ -1174,16 +1323,11 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
   # Get the required variables
   # p is Max number of lags for innovations 
   # q is Max number of lags for conditional variances
-  K    = ncol(data);  #Number of series to model
-  T    = nrow(data);  #Number of time periods
+  K    = dim(data)[2];  #Number of series to model
+  T    = dim(data)[1];  #Number of time periods
   lls  = rep(NA,T);     #Vector containing the likelihoods
   h    = matrix(nrow=K,ncol=T); #Matrix to containing conditional variances
   maxp = max(p); maxq=max(q);
-  
-  # Set lower and upper-bound if not specified:
-  if( is.null(LB) ){ LB = rep(0,K)   }
-  if( is.null(UB) ){ UB = rep(Inf,K) }
-  
   
   # Get the parameters:
   x = .transformparams( par, p=p, q=q );
@@ -1195,7 +1339,7 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
     for(j in 1:length(A) ){ totalA = totalA + t(t(rowSums(A[[j]]))); } # Sum over alphas for all models
     for(j in 1:length(B) ){ totalB = totalB + t(t(rowSums(B[[j]]))); } # Sum over betas for all models
     O = 1 - totalA - totalB; # The remaing weight after substracting A & B
-    # Calculate the unconditionals ### KRIS FEEDBACK PLEASE ###
+    # Calculate the unconditionals
     uncond = t(t(colMeans(data)));
     O = O*uncond;
   } #End if close for not optimizing over omega  
@@ -1209,13 +1353,13 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
     
     for(j in 1:maxp){# Loop over innovation lags
       if( (t-j) > 0 ){ 
-        h[,t] = h[,t] + t( A[[j]] %*% t(t(data[(t-j),])) ); #Adding innovations to h        
+        h[,t] = h[,t] + t( A[[j]] %*% t(data[(t-j),]) ); #Adding innovations to h        
       }else{ 
         h[,t] = h[,t] + t( A[[j]] %*% backcast ); #Adding innovations to h          
       }
-    } #end loop over innovation lags # CHECK: error caution: "Error in A[[j]] %*% t(t(data[(t - j), ])) : non-conformable arguments"????
+    } #end loop over innovation lags # CHECK: error caution????
     
-    for(j in 1:maxq){# Loop over cond variances lags
+    for(j in 1:maxp){# Loop over cond variances lags
       if( (t-j) > 0 ){ 
         h[,t] = h[,t] + t( B[[j]] %*% t(t(h[,(t-j)])) ); #Adding cond vars to h 
       }else{ 
@@ -1230,10 +1374,9 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
       if( h[j,t] > UB[j] ){  h[j,t] = UB[j] + log( h[j,t] - UB[j]);}
     }#end loop over series
     
-    lls[t] = 0.5*( likConst + sum( log(h[,t]) ) + sum( data[t,] / h[,t] ) ); # lr_t + lrm_t            
+    lls[t] = 0.5*( likConst + sum( log(h[,t]) ) + sum( data[t,] / h[,t] ) );            
   } #End loop over days
-  
-  ll = sum(lls); #log Q1 + log Q2 
+  ll = sum(lls);
   
   if(is.na(ll) || is.infinite(ll) ){  ll = 10^7 } 
   
@@ -1248,29 +1391,19 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
   } #end output in case you want params
 }
 
+
 .heavy_likelihood_ll  = function( splittedparams, data, p, q, backcast, LB, UB, compconst=FALSE, ... ){ 
-  par = .transtopar( splittedparams,  p, q )[[1]]
-  out = .heavy_likelihood( par, data, p, q, backcast, LB, UB, foroptim=FALSE, compconst=FALSE )
+  par = .transtopar( splittedparams,  p, q )
+  out = .heavy_likelihood( par=par, data, p, q, backcast, LB, UB, foroptim=FALSE, compconst=FALSE )
   return(out[[1]])
 } 
 
 .heavy_likelihood_lls  = function( splittedparams , data, p, q, backcast, LB, UB, compconst=FALSE,... ){ 
   par = .transtopar( splittedparams,  p, q )
-  out = .heavy_likelihood( par, data, p, q, backcast, LB, UB, foroptim=FALSE, compconst=FALSE )
+  out = .heavy_likelihood( par=par, data, p, q, backcast, LB, UB, foroptim=FALSE, compconst=FALSE )
   return(out[[2]])
 } 
 
-
-.get_param_names = function( estparams, p, q){
-  K = dim(p)[2];
-  nAlpha =  sum(p);
-  nBeta  =  sum(q);
-  omegas = paste("omega",1:K,sep="");
-  alphas = paste("alpha",1:nAlpha,sep="");
-  betas  = paste("beta", 1:nBeta,sep="");
-  names  = c(omegas,alphas,betas);
-  
-}
 
 .SEheavyModel=function( paramsvector, data, p, q, backcast, LB, UB, compconst=FALSE, ...)
 {
@@ -1283,7 +1416,7 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
   
   # based on p and q, map heavy paramsvector into splitted params vector called theta 
   
-  out = .transtosplit ( paramsvector,  p, q)
+  out = .transtosplit ( paramsvector=paramsvector,  p=p, q=q)
   
   if(!compconst){
     splittedparams = out[[1]]
@@ -1299,7 +1432,7 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
   
   # compute the asymptotic covariance matrix of splittedparamsvector
   
-  mH = hessian (.heavy_likelihood_ll, x= splittedparams, data, p, q, backcast, LB, UB, compconst)
+  mH = hessian (.heavy_likelihood_ll, x= splittedparams, data=data, p=p, q=q, backcast=backcast, LB=LB, UB=UB, compconst=compconst)
   
   T        = nrow(data) 
   nm       = length(paramsvector)
@@ -1311,16 +1444,21 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
     start = end + 1
     end   = start + vk[k] - 1
     Jmatrix[start:end, start:end] =  mH[start:end, start:end]
-  } # CHECK: unexpected result: start value exceeds bound???
+  } 
   
   
-  Jmatrix = -1/T * Jmatrix
-  ## J-1 (inverse matrix of J)
-  invJ = solve(Jt)
+  Jt = -1/T * Jmatrix
+  ## J-1 (inverse matrix of J):
+    
+  invJ = solve(svd(Jt)[[2]])
+  ## CHECK: in the article: invJ = solve(Jt). 
+   # Yet solve function have caution: Error in solve.default(Jt) : system is computationally singular: reciprocal condition number = 1.39027e-29
+   # So I put svd function here. Reference from: https://stat.ethz.ch/pipermail/r-help/2001-October/015927.html
+  
   
   ## Define It
   # jacobian will be T x length of theta 
-  m  = jacobian(fun = .heavy_likelihood_lls, x = splittedparams, data, p, q, backcast, LB, UB, compconst=FALSE) # returns a vector?
+  m  = jacobian(fun = .heavy_likelihood_lls, x = splittedparams, data=data, p=p, q=q, backcast=backcast, LB=LB, UB=UB, compconst=compconst) # returns a vector?
   It = cov(m)
   
   ## Standard error:
@@ -1338,11 +1476,9 @@ rBeta= function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRet
   reSEheavyModel = .transtopar(SEheavyModel, p, q)
   
   # map it back to paramsvector
-  out = cbind(paramsvector, reSEheavyModel)
-  
-  
-  
-  
+  out = as.matrix(t(rbind(paramsvector, reSEheavyModel)))
+  colnames(out) <- c("Parameter", "Standard error")
+    
   return(out)
   
 }
