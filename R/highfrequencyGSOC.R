@@ -1450,7 +1450,12 @@ heavyModel = function(data, p=matrix( c(0,0,1,1),ncol=2 ), q=matrix( c(1,0,0,1),
   Jt = -1/T * Jmatrix
   ## J-1 (inverse matrix of J):
     
-  invJ = solve(Jt)
+  invJ = try(solve(Jt))
+  if( class(invJ) == "try-error"){
+    require("MASS")
+    print("-1*Hessian is not invertible - generalized inverse is used")
+    invJ = ginv(Jt)
+  }
   ## CHECK: in the article: invJ = solve(Jt). 
    # Yet solve function have caution: Error in solve.default(Jt) : system is computationally singular: reciprocal condition number = 1.39027e-29
    # So I put svd function here. Reference from: https://stat.ethz.ch/pipermail/r-help/2001-October/015927.html
