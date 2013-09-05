@@ -909,7 +909,7 @@ heavyModel = function(data, p=matrix( c(0,0,1,1),ncol=2 ), q=matrix( c(1,0,0,1),
   
 }
 
-heavy_likelihood_c = function( par, data, p, q, backcast, LB, UB, foroptim=TRUE, compconst=FALSE ){
+.heavy_likelihood_c = function( par, data, p, q, backcast, LB, UB, foroptim=TRUE, compconst=FALSE ){
   
   # Get the required variables
   # p is Max number of lags for innovations 
@@ -924,7 +924,7 @@ heavy_likelihood_c = function( par, data, p, q, backcast, LB, UB, foroptim=TRUE,
   
   likelihoodC = .C("heavy_likelihoodR", 
                    parameters = as.double(par), 
-                   data = as.double(data), 
+                   data = as.double(t(data)), 
                    TT = as.integer(TT), 
                    K = as.integer(K), 
                    means = as.double(means),
@@ -1395,13 +1395,13 @@ heavy_likelihood_c = function( par, data, p, q, backcast, LB, UB, foroptim=TRUE,
 .heavy_likelihood_ll  = function( splittedparams, data, p, q, backcast, LB, UB, compconst=FALSE, ... ){ 
   par = .transtopar( splittedparams,  p, q )
   out = .heavy_likelihood( par=par, data, p, q, backcast, LB, UB, foroptim=FALSE, compconst=FALSE )
-  return(out[[1]])
+  return((-1)*out[[1]])
 } 
 
 .heavy_likelihood_lls  = function( splittedparams , data, p, q, backcast, LB, UB, compconst=FALSE,... ){ 
   par = .transtopar( splittedparams,  p, q )
   out = .heavy_likelihood( par=par, data, p, q, backcast, LB, UB, foroptim=FALSE, compconst=FALSE )
-  return(out[[2]])
+  return((-1)*out[[2]])
 } 
 
 
@@ -1450,7 +1450,7 @@ heavy_likelihood_c = function( par, data, p, q, backcast, LB, UB, foroptim=TRUE,
   Jt = -1/T * Jmatrix
   ## J-1 (inverse matrix of J):
     
-  invJ = solve(svd(Jt)[[2]])
+  invJ = solve(Jt)
   ## CHECK: in the article: invJ = solve(Jt). 
    # Yet solve function have caution: Error in solve.default(Jt) : system is computationally singular: reciprocal condition number = 1.39027e-29
    # So I put svd function here. Reference from: https://stat.ethz.ch/pipermail/r-help/2001-October/015927.html
