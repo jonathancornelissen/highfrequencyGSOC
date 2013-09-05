@@ -1404,8 +1404,19 @@ heavyModel = function(data, p=matrix( c(0,0,1,1),ncol=2 ), q=matrix( c(1,0,0,1),
   return((-1)*out[[2]])
 } 
 
+.get_param_names = function( estparams, p, q){
+  K = dim(p)[2];
+  nAlpha =  sum(p);
+  nBeta  =  sum(q);
+  omegas = paste("omega",1:K,sep="");
+  alphas = paste("alpha",1:nAlpha,sep="");
+  betas  = paste("beta", 1:nBeta,sep="");
+  names  = c(omegas,alphas,betas);
+  
+}
 
-.SEheavyModel=function( paramsvector, data, p, q, backcast, LB, UB, compconst=FALSE, ...)
+
+.SEheavyModel = function( paramsvector, data, p, q, backcast, LB, UB, compconst=FALSE, ...)
 {
   require(numDeriv)
   K    = ncol(data);  #Number of series to model
@@ -1422,8 +1433,18 @@ heavyModel = function(data, p=matrix( c(0,0,1,1),ncol=2 ), q=matrix( c(1,0,0,1),
     splittedparams = out[[1]]
     
   }else{
+    totalA = totalB = matrix( rep(0,K) ,ncol=1,nrow=K);
+    for(j in 1:length(A) ){ totalA = totalA + t(t(rowSums(A[[j]]))); } # Sum over alphas for all models
+    for(j in 1:length(B) ){ totalB = totalB + t(t(rowSums(B[[j]]))); } # Sum over betas for all models
+    O = 1 - totalA - totalB; # The remaing weight after substracting A & B
+    # Calculate the unconditionals
+    uncond = t(t(colMeans(data)));
+    O = O*uncond;
     
-    
+    l = length(out[[1]]);
+    splittedparams = rep(0, l);
+    for (i in 1:K) {splittedparams[i] = O[i]};
+    for (i in (K+1):l){splittedparams[i] = out[[1]][i]}
   }
   
   
@@ -1483,7 +1504,7 @@ heavyModel = function(data, p=matrix( c(0,0,1,1),ncol=2 ), q=matrix( c(1,0,0,1),
   # map it back to paramsvector
   out = as.matrix(t(rbind(paramsvector, reSEheavyModel)))
   colnames(out) <- c("Parameter", "Standard error")
-    
+  rownames(out) = .get_param_names(estparams = paramsvector, p=p, q=q)
   return(out)
   
 }
