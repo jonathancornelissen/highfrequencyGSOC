@@ -1253,71 +1253,53 @@ heavyModel = function(data, p=matrix( c(0,0,1,1),ncol=2 ), q=matrix( c(1,0,0,1),
   for (i in 1: K)
   {
     vk[i] = 1 + sum(p[i, ]) + sum(q[i, ])
-    
-  } # CHECK: this function run properly. However, when we run function: .SEheavyModel, there is error: Error in q[i, ] : incorrect number of dimensions
-  
-
-  # matrix O
-  vo = rep(NA,K)
-  
-  start = 1
-  
-  for (i in 1: K)
-  {
-    vo[i] = theta[start]
-    start = start + vk[i]
-  }  # CHECK: code seems ok. Yet, the result is incorrect. 
-  
-  #matrix A: 
-  
-  mA = matrix (rep(NA, K*K*maxp), nrow = K)
-  start = 2
-  
-  for (k1 in 1:K)
-  {
-    for (k2 in 1:K)
-    {
-      pp = p[k1,k2]
-      if (pp==0){next}
-      
-      for (ppp in 1:pp)
-      {
-        mA[k1, k2+(ppp-1)*K] = theta[start]
-        if(maxp<=1){start = start + vk[k1]}
-        else {start = start + 1}
-      }
-    }
   } 
   
-  vA = t(mA[!is.na(mA)])
-  # matrix B:
+  # matrix O
+  vo = matrix(rep(1,K),ncol=1)
   
-  mB = matrix (rep(NA, K*K*maxq), nrow = K)
-  start = 2 + sum(p[1,]) 
+  # matrix A, B
   
-  for (k1 in 1:K)
+  
+  mA = mB = c();
+  
+  for(i in 1:maxp){    # A will contain a list-item per innovation lag
+    Ai       = matrix(rep(0,K^2),ncol=K); 
+    Ai[p>=i] = 1;
+    mA       = cbind(mA,Ai)
+  }#end loop over number of lags for innovations
+  
+  
+  # autoregressive term parameters
+  for(i in 1:maxq){   # B will contain a list-item per cond var lag
+    Bi       = matrix(rep(0,K^2),ncol = K); 
+    Bi[q>=i] = 1;
+    mB       = cbind(mB,Bi)
+  }#End loop over number of lags for cond variances  
+  
+  # Merge vO,mA, mB
+  all = matrix(cbind(vo , mA , mB),nrow=K)
+  
+  nma= ncol(all);
+  start = 1;
+  
+  for (i in 1:K)
   {
-    for (k2 in 1:K)
+    for (j in 1:nma)
     {
-      qq = q[k1,k2]
-      if (qq==0){next}
-      
-      for (qqq in 1:qq)
-      {
-        mB[k1, k2+(qqq-1)*K] = theta[start]
-        if(maxq<=1){start = start + vk[k1]}
-        else {start = start + 1}
-      }
+      if(all[i,j] == 1) {all[i,j] = theta[start]} 
+      else {
+        all[i,j] = NA;
+        next};
+      start = start+1
     }
   }
   
-  vB = t(mB[!is.na(mB)])
-  # combine: 
-  all = cbind(matrix(vo,nrow = 1), matrix(vA,nrow=1), matrix(vB,nrow=1)) #CHECK: rbind function requires the same ncol, it does not meet this requirement here?. 
+  params = all[!is.na(all)]
   
-  return(all)
+  return(params)
   
-}  # CHECK: add argument if: it works for traditional p, q. And it should be checked more with other p, q. 
+}
 
 .heavy_likelihood = function( par, data, p, q, backcast, LB, UB, foroptim=TRUE, compconst=FALSE ){ 
   # Get the required variables
@@ -1425,31 +1407,53 @@ heavyModel = function(data, p=matrix( c(0,0,1,1),ncol=2 ), q=matrix( c(1,0,0,1),
   if( is.null(LB) ){ LB = rep(0,K)   }
   if( is.null(UB) ){ UB = rep(Inf,K) }
   
+  if(!compconst){
+    # based on p and q, map heavy paramsvector into splitted params vector called theta 
+    
+    out = .transtosplit ( paramsvector=paramsvector,  p=p, q=q)
+    
+    # vk[i] is the number of parameters of equation i in the heavy model
+    vk = out[[2]];
+    
+    splittedparams = out[[1]];
+    
+    # compute the asymptotic covariance matrix of splittedparamsvector
+    
+    mH = hessian (.heavy_likelihood_ll, x= splittedparams, data=data, p=p, q=q, backcast=backcast, LB=LB, UB=UB, compconst=compconst)
+    
+    T        = nrow(data) 
+    nm       = length(paramsvector)
+    Jmatrix  = matrix (rep(0, nm^2), ncol = nm)
+    end = 0
+    
+    
+    for( k in 1:K){
+      start = end + 1
+      end   = start + vk[k] - 1
+      Jmatrix[start:end, start:end] =  mH[start:end, start:end]
+    } 
+  
+    ## Define It
+    # jacobian will be T x length of theta 
+    m  = jacobian(fun = .heavy_likelihood_lls, x = splittedparams, data=data, p=p, q=q, backcast=backcast, LB=LB, UB=UB, compconst=compconst) # returns a vector?
+    It = cov(m)
+    
+  }else{
+  
+  # Change value of mu: 
+  for (i in 1:K)  
+  {
+    paramsvector[i]  = colMeans(data[,i])
+  }
+  
   # based on p and q, map heavy paramsvector into splitted params vector called theta 
   
   out = .transtosplit ( paramsvector=paramsvector,  p=p, q=q)
   
-  if(!compconst){
-    splittedparams = out[[1]]
-    
-  }else{
-    totalA = totalB = matrix( rep(0,K) ,ncol=1,nrow=K);
-    for(j in 1:length(A) ){ totalA = totalA + t(t(rowSums(A[[j]]))); } # Sum over alphas for all models
-    for(j in 1:length(B) ){ totalB = totalB + t(t(rowSums(B[[j]]))); } # Sum over betas for all models
-    O = 1 - totalA - totalB; # The remaing weight after substracting A & B
-    # Calculate the unconditionals
-    uncond = t(t(colMeans(data)));
-    O = O*uncond;
-    
-    l = length(out[[1]]);
-    splittedparams = rep(0, l);
-    for (i in 1:K) {splittedparams[i] = O[i]};
-    for (i in (K+1):l){splittedparams[i] = out[[1]][i]}
-  }
-  
-  
   # vk[i] is the number of parameters of equation i in the heavy model
-  vk = out[[2]]
+  vk = out[[2]];
+  
+  splittedparams = out[[1]];
   
   # compute the asymptotic covariance matrix of splittedparamsvector
   
@@ -1467,7 +1471,39 @@ heavyModel = function(data, p=matrix( c(0,0,1,1),ncol=2 ), q=matrix( c(1,0,0,1),
     Jmatrix[start:end, start:end] =  mH[start:end, start:end]
   } 
   
+  # Change value of matrix Jt:
+     
+    # Change value of 0: 
+  end = 0;
   
+  for (j in 1:K )
+  {
+    if(j>1){col= col+ vk[j-1]}else{col=1};
+    start = end + 1;
+    end = start + vk[j] - 1;
+    Jmatrix[start:end,col] = 0;
+    
+  }
+  
+  # Change value of T:
+  start = 1;
+  
+  for (i in 1:K)
+  {
+    
+    Jmatrix[start,start] = T;
+    
+    start = start + vk[i]
+  }
+    
+  ## Define It
+  # jacobian will be T x length of theta 
+  m  = jacobian(fun = .heavy_likelihood_lls, x = splittedparams, data=data, p=p, q=q, backcast=backcast, LB=LB, UB=UB, compconst=compconst) # returns a vector?
+  require(sandwich);
+  It = vcovHAC(m)
+  }
+  
+  ## Jt matrix
   Jt = -1/T * Jmatrix
   ## J-1 (inverse matrix of J):
     
@@ -1477,15 +1513,9 @@ heavyModel = function(data, p=matrix( c(0,0,1,1),ncol=2 ), q=matrix( c(1,0,0,1),
     print("-1*Hessian is not invertible - generalized inverse is used")
     invJ = ginv(Jt)
   }
-  ## CHECK: in the article: invJ = solve(Jt). 
-   # Yet solve function have caution: Error in solve.default(Jt) : system is computationally singular: reciprocal condition number = 1.39027e-29
-   # So I put svd function here. Reference from: https://stat.ethz.ch/pipermail/r-help/2001-October/015927.html
+    
   
-  
-  ## Define It
-  # jacobian will be T x length of theta 
-  m  = jacobian(fun = .heavy_likelihood_lls, x = splittedparams, data=data, p=p, q=q, backcast=backcast, LB=LB, UB=UB, compconst=compconst) # returns a vector?
-  It = cov(m)
+ 
   
   ## Standard error:
   
