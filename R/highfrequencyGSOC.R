@@ -195,7 +195,7 @@ ivInference = function(rdata, IVestimator = "RV", IQestimator = "rQuar", confide
     cb <- c(lowband,highband)
     
     ## reports: 
-    out       ={}
+    out       = {}
     out$hativ = hatIV
     out$se    = stderr
     out$cb    = cb
@@ -1498,9 +1498,24 @@ heavyModel = function(data, p=matrix( c(0,0,1,1),ncol=2 ), q=matrix( c(1,0,0,1),
     
   ## Define It
   # jacobian will be T x length of theta 
-  m  = jacobian(fun = .heavy_likelihood_lls, x = splittedparams, data=data, p=p, q=q, backcast=backcast, LB=LB, UB=UB, compconst=compconst) # returns a vector?
+  m  = jacobian(fun = .heavy_likelihood_lls, x = splittedparams, data=data, p=p, q=q, backcast=backcast, LB=LB, UB=UB, compconst=compconst) # returns a matrix of T by L (length of theta)
+  
+  start = 1;
+  for (i in 1:K)
+  {
+    for (j in 1:T)
+    {
+      m[j,start] = 1/T * (data[j,i] - paramsvector[i]);
+      start = start + vk[i-1]
+    }
+  
+  if(i<K){start = start + vk[i]} else {stop}
+      
+  }
+  
   require(sandwich);
-  It = vcovHAC(m)
+  fm = lm(m ~ 0); #fit function here. check with prof. Kris
+  It = vcovHAC(fm) #check with prof. Kris
   }
   
   ## Jt matrix
@@ -1513,7 +1528,7 @@ heavyModel = function(data, p=matrix( c(0,0,1,1),ncol=2 ), q=matrix( c(1,0,0,1),
     print("-1*Hessian is not invertible - generalized inverse is used")
     invJ = ginv(Jt)
   }
-    
+  
   
  
   
