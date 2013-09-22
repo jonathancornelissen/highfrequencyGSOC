@@ -27,7 +27,7 @@ in which, \eqn{IVestimator} can be: bipower variance (BV), minRV, medRV.
 }
 \usage{
 BNSjumptest(rdata, IVestimator= "BV", IQestimator= "TP", type= "linear", logtransform= FALSE, 
-            max= FALSE, align.by= NULL, align.period= NULL, makeReturns = FALSE, startV= NULL,...)
+            max= FALSE, align.by= NULL, align.period= NULL, makeReturns = FALSE, ...)
 }
 
 \arguments{
@@ -40,7 +40,6 @@ BNSjumptest(rdata, IVestimator= "BV", IQestimator= "TP", type= "linear", logtran
   \item{align.by}{a string, align the tick data to "seconds"|"minutes"|"hours" }
   \item{align.period}{an integer, align the tick data to this many [seconds|minutes|hours].}  
   \item{makeReturns}{boolean, should be TRUE when rdata contains prices instead of returns. FALSE by default.} 
-  \item{startV}{start point of auxiliary estimators in threshold estimation (Corsi et al. (2010). NULL by default.}
   \item{...}{additional arguments.}
 }
 

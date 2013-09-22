@@ -6,5 +6,6 @@ Date: 2013-07-02
 Author: Giang Nguyen
 Maintainer: Giang Nguyen <hagiang3108@gmail.com>
 Description: Extra functionality for the highfrequency package written during GSOC
+Suggests: MASS, numDeriv, sandwich 
 Depends: xts, highfrequency
 License: MIT
