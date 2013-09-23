@@ -4,7 +4,7 @@
 Modulated Realized Covariance (MRC): Return univariate or multivariate preaveraged estimator.  
 }
 \description{
-Function returns univariate or multivariate preaveraged estimator, as difined in Hautsch & Podolskij (2013). 
+Function returns univariate or multivariate preaveraged estimator, as difined in Hautsch and Podolskij (2013). 
 }
 
 \usage{

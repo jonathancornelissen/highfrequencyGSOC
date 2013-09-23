@@ -1,3 +1,5 @@
+useDynLib(highfrequencyGSOC); 
+
 export(AJjumptest,
        BNSjumptest,
        ivInference,
