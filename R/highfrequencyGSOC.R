@@ -965,7 +965,7 @@ rBeta = function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRe
          BV= 2.61,
          minRV= 3.81,
          medRV= 2.96,
-         ROWVar = .thetaROWVar(...))
+         ROWVar = .thetaROWVar())
 }
 
 .thetaROWVar = function( alpha = 0.001 , alphaMCD = 0.5 )
