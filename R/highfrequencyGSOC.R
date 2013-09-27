@@ -965,7 +965,7 @@ rBeta = function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRe
          BV= 2.61,
          minRV= 3.81,
          medRV= 2.96,
-         ROWVar = .thetaROWVar())
+         ROWVar = .thetaROWVar(...))
 }
 
 .thetaROWVar = function( alpha = 0.001 , alphaMCD = 0.5 )
@@ -1265,7 +1265,7 @@ rBeta = function(rdata, rindex, RCOVestimator= "rCov", RVestimator= "RV", makeRe
     
     for(j in 1:maxp){# Loop over innovation lags
       if( (t-j) > 0 ){ 
-        h[,t] = h[,t] + t( A[[j]] %*% t(data[(t-j),]) ); #Adding innovations to h        
+        h[,t] = h[,t] + t( A[[j]] %*% t(t(data[(t-j),]) )); #Adding innovations to h        
       }else{ 
         h[,t] = h[,t] + t( A[[j]] %*% backcast ); #Adding innovations to h          
       }
